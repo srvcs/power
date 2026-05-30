@@ -1,0 +1,135 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "srvcs-power",
+    "description": "",
+    "license": {
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [],
+        "summary": "`GET /` — service identity (srvcs service standard).",
+        "operationId": "index",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Info"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [],
+        "summary": "`POST /` — compute `base` raised to `exp`.",
+        "description": "This service does no arithmetic of its own. It folds `exp` repeated calls to\n`srvcs-multiply` over an accumulator seeded at `1`:\n`acc = 1; for _ in 0..exp { acc = multiply(acc, base) }`. As a result\n`power(base, 0) == 1` makes no dependency calls at all. A negative exponent\nis undefined over the integers and is rejected with `422` before any call.",
+        "operationId": "evaluate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PowerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "exp is negative, or a dependency rejected an operand (forwarded)"
+          },
+          "500": {
+            "description": "a dependency returned a malformed response"
+          },
+          "503": {
+            "description": "a dependency is unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EvalRequest": {
+        "type": "object",
+        "required": [
+          "base",
+          "exp"
+        ],
+        "properties": {
+          "base": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "exp": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "Info": {
+        "type": "object",
+        "required": [
+          "service",
+          "concern",
+          "depends_on"
+        ],
+        "properties": {
+          "concern": {
+            "type": "string"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "service": {
+            "type": "string"
+          }
+        }
+      },
+      "PowerResponse": {
+        "type": "object",
+        "required": [
+          "base",
+          "exp",
+          "result"
+        ],
+        "properties": {
+          "base": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "exp": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "result": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      }
+    }
+  }
+}
