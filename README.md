@@ -1,59 +1,67 @@
 # srvcs-power
 
-The exponentiation orchestrator of the srvcs.cloud distributed standard library.
+## Name
 
-Its single concern: **`base` raised to `exp`**. It does no arithmetic of its
-own. It computes the power as a counted loop of repeated multiplications: it
-seeds an accumulator at `1` and asks [`srvcs-multiply`](https://github.com/srvcs/multiply)
-for `acc * base`, `exp` times.
+| Field | Value |
+| --- | --- |
+| Service | `srvcs-power` |
+| Slug | `power` |
+| Repository | `srvcs/power` |
+| Package | `srvcs-power` |
+| Kind | `orchestrator` |
 
-```text
-acc = 1
-for _ in 0..exp:
-    acc = multiply(acc, base)
-```
+## Function
 
-As a consequence `power(base, 0) == 1` makes no dependency calls at all. A
-negative exponent is undefined over the integers and is rejected with `422`
-before any call is made.
+arithmetic: base raised to exp
+
+## Dependencies
+
+| Dependency | Repository |
+| --- | --- |
+| `srvcs-multiply` | [srvcs/multiply](https://github.com/srvcs/multiply) |
 
 ## API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/` | Service identity, concern, and dependency list |
-| `POST` | `/` | Compute `base` raised to `exp` |
-| `GET` | `/healthz` `/readyz` `/metrics` `/openapi.json` | srvcs service standard surface |
+| `GET` | `/` | Service identity |
+| `POST` | `/` | Evaluate the service function |
+| `GET` | `/healthz` | Liveness probe |
+| `GET` | `/readyz` | Readiness probe |
+| `GET` | `/metrics` | Prometheus metrics |
+| `GET` | `/openapi.json` | OpenAPI document |
 
-```sh
-curl -s -X POST localhost:8080/ -H 'content-type: application/json' -d '{"base": 2, "exp": 10}'
-# {"base":2,"exp":10,"result":1024}
-```
+## Inputs
 
-Responses:
+| Name | Type | Required |
+| --- | --- | --- |
+| `base` | `integer` | yes |
+| `exp` | `integer` | yes |
 
-- `200 {"base": b, "exp": e, "result": r}` — evaluated.
-- `422 {"error": "negative exponent"}` — `exp` is negative.
-- `422` — an operand was rejected by `srvcs-multiply` (forwarded).
-- `503` — the dependency is unavailable.
+## Outputs
 
-## Dependencies
-
-- [`srvcs-multiply`](https://github.com/srvcs/multiply)
-
-A single request fans out into `exp` sequential calls to `srvcs-multiply`, each
-folding the running accumulator with `base`.
+| Name | Type |
+| --- | --- |
+| `base` | `integer` |
+| `exp` | `integer` |
+| `result` | `integer` |
 
 ## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `SRVCS_BIND_ADDR` | `0.0.0.0:8080` | Bind address |
-| `SRVCS_MULTIPLY_URL` | `http://127.0.0.1:8086` | Base URL of `srvcs-multiply` |
 | `SRVCS_ENV` | `development` | Environment label for logs |
 | `RUST_LOG` | `info,tower_http=info` | Tracing filter |
+| `SRVCS_MULTIPLY_URL` | `http://127.0.0.1:8086` | Base URL for srvcs-multiply |
 
-## Local checks
+## Error Behavior
+
+- `422` means the request could not be evaluated for the documented input shape.
+- `503` means a required dependency was unavailable or returned an unexpected response.
+- Dependency validation errors are forwarded when this service delegates validation.
+
+## Local Checks
 
 ```sh
 cargo fmt --check
@@ -61,11 +69,8 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-Orchestration tests stand up an in-process mock `srvcs-multiply` that actually
-computes `a * b`, so the counted-loop fold is genuinely exercised. They cover
-the happy path (`power(2, 10) == 1024`, `power(5, 0) == 1`, `power(3, 3) == 27`),
-the negative-exponent rejection (`422`), and a degraded dependency (`503`). See
-[`srvcs/platform`](https://github.com/srvcs/platform) for the shared standard.
+See the [srvcs service standard](https://github.com/srvcs/platform/blob/main/STANDARD.md) for the full operational contract.
 
-> Note: the `cargoHash` in `flake.nix` is inherited from the template and must be
-> refreshed with a `nix build` before the Nix gates pass.
+## Metadata
+
+Machine-readable service metadata lives in `srvcs.yaml`. Keep it aligned with this README when the service contract changes.
